@@ -22,25 +22,53 @@ import seaborn as sns
 def calibration_plot(y_true, y_prob, n_bins=10):
     """
     Create a calibration plot with a 45-degree dashed line.
-
     Parameters:
         y_true (array-like): True binary labels (0 or 1).
         y_prob (array-like): Predicted probabilities for the positive class.
         n_bins (int): Number of bins to divide the data for calibration.
-
     Returns:
         None
     """
     #Calculate calibration values
     bin_means, prob_true = calibration_curve(y_true, y_prob, n_bins=n_bins)
-    
     #Create the Seaborn plot
     sns.set(style="whitegrid")
     plt.plot([0, 1], [0, 1], "k--")
     plt.plot(prob_true, bin_means, marker='o', label="Model")
-    
     plt.xlabel("Mean Predicted Probability")
     plt.ylabel("Fraction of Positives")
     plt.title("Calibration Plot")
     plt.legend(loc="best")
     plt.show()
+
+def run(df_arrests_test):
+    """
+    Generate calibration plots for LR and DT models and print which is more calibrated
+    Parameters:
+        df_arrests_test (DataFrame): Test split with pred_lr and pred_dt columns
+    Returns:
+        None
+    """
+    y_true = df_arrests_test['y']
+    #calibration plots
+    print("Logistic Regression Calibration Plot:")
+    calibration_plot(y_true, df_arrests_test['pred_lr'], n_bins=5)
+    print("Decision Tree Calibration Plot:")
+    calibration_plot(y_true, df_arrests_test['pred_dt'], n_bins=5)
+    #compare calibration by mean absolute error from perfect calibration
+    def mean_cal_error(y_true, y_prob, n_bins=5):
+        """
+        Return mean absolute deviation between predicted and actual probabilities across bins
+        Parameters:
+            y_true (array-like): Binary labels
+            y_prob (array-like): Predicted probabilities for the positive class
+            n_bins (int): Number of bins for calibration curve
+        Returns:
+            float: Mean absolute calibration error
+        """
+        bin_means, prob_true = calibration_curve(y_true, y_prob, n_bins=n_bins)
+        return abs(bin_means - prob_true).mean()
+    lr_err = mean_cal_error(y_true, df_arrests_test['pred_lr'])
+    dt_err = mean_cal_error(y_true, df_arrests_test['pred_dt'])
+    more_calibrated = 'logistic regression' if lr_err < dt_err else 'decision tree'
+    print(f"Which model is more calibrated? {more_calibrated} (logistic regression error: {lr_err:}, decision tree error: {dt_err:})")
